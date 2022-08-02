@@ -31,7 +31,7 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with: 
-          path: EKS
+          path: zee5-ve-stage-env
       - uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.2.5
@@ -68,6 +68,7 @@ jobs:
           echo $AWS_ACCESS_KEY $AWS_SECRET_ACCESS_KEY  Pass.........
           aws configure set aws_access_key_id $AWS_ACCESS_KEY
           aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          cd EKS/${{github.event.inputs.logLevel}}-eks
           pwd
           ls -la
           ls -lart
