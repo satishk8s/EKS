@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: test
+name: EKS Cluster Creation
 
 # Controls when the workflow will run
 on:
@@ -25,15 +25,13 @@ jobs:
     env: 
       AWS_ACCESS_KEY: '${{secrets.AWS_ACCESS_KEY_ID_VE}}'
       AWS_SECRET_ACCESS_KEY: '${{secrets.AWS_SECRET_ACCESS_KEY_VE}}'
-      GITHUB_USERNAME: '${{secrets.PACKAGE_ID}}'
-      GITHUB_PASSWORD: '${{secrets.PACKAGE_SECRET}}'
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
         with: 
-          path: zee5-ve-stage-env
+          path: EKS
       - uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.2.5
@@ -70,7 +68,6 @@ jobs:
           echo $AWS_ACCESS_KEY $AWS_SECRET_ACCESS_KEY  Pass.........
           aws configure set aws_access_key_id $AWS_ACCESS_KEY
           aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-          cd zee5-ve-stage-env/${{github.event.inputs.logLevel}}-eks
           pwd
           ls -la
           ls -lart
