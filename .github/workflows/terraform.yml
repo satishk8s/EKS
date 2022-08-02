@@ -1,94 +1,81 @@
-# This workflow installs the latest version of Terraform CLI and configures the Terraform CLI configuration file
-# with an API token for Terraform Cloud (app.terraform.io). On pull request events, this workflow will run
-# `terraform init`, `terraform fmt`, and `terraform plan` (speculative plan via Terraform Cloud). On push events
-# to the "main" branch, `terraform apply` will be executed.
-#
-# Documentation for `hashicorp/setup-terraform` is located here: https://github.com/hashicorp/setup-terraform
-#
-# To use this workflow, you will need to complete the following setup steps.
-#
-# 1. Create a `main.tf` file in the root of this repository with the `remote` backend and one or more resources defined.
-#   Example `main.tf`:
-#     # The configuration for the `remote` backend.
-#     terraform {
-#       backend "remote" {
-#         # The name of your Terraform Cloud organization.
-#         organization = "example-organization"
-#
-#         # The name of the Terraform Cloud workspace to store Terraform state files in.
-#         workspaces {
-#           name = "example-workspace"
-#         }
-#       }
-#     }
-#
-#     # An example resource that does nothing.
-#     resource "null_resource" "example" {
-#       triggers = {
-#         value = "A example resource that does nothing!"
-#       }
-#     }
-#
-#
-# 2. Generate a Terraform Cloud user API token and store it as a GitHub secret (e.g. TF_API_TOKEN) on this repository.
-#   Documentation:
-#     - https://www.terraform.io/docs/cloud/users-teams-organizations/api-tokens.html
-#     - https://help.github.com/en/actions/configuring-and-managing-workflows/creating-and-storing-encrypted-secrets
-#
-# 3. Reference the GitHub secret in step using the `hashicorp/setup-terraform` GitHub Action.
-#   Example:
-#     - name: Setup Terraform
-#       uses: hashicorp/setup-terraform@v1
-#       with:
-#         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+# This is a basic workflow to help you get started with Actions
 
-name: 'Terraform'
+name: test
 
+# Controls when the workflow will run
 on:
-  push:
-    branches:
-    - "main"
-  pull_request:
+  #push:
+    #branches: [ main ]
+  #pull_request:
+    #branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Application Name'     
+        required: true
+        default: 'Please select application name'
 
-permissions:
-  contents: read
 
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  terraform:
-    name: 'Terraform'
+  # This workflow contains a single job called "build"
+  infra-deploy:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    environment: production
+    env: 
+      AWS_ACCESS_KEY: '${{secrets.AWS_ACCESS_KEY_ID_VE}}'
+      AWS_SECRET_ACCESS_KEY: '${{secrets.AWS_SECRET_ACCESS_KEY_VE}}'
+      GITHUB_USERNAME: '${{secrets.PACKAGE_ID}}'
+      GITHUB_PASSWORD: '${{secrets.PACKAGE_SECRET}}'
 
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
-    defaults:
-      run:
-        shell: bash
-
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v3
-
-    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
-      with:
-        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-
-    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-    - name: Terraform Init
-      run: terraform init
-
-    # Checks that all Terraform configuration files adhere to a canonical format
-    - name: Terraform Format
-      run: terraform fmt -check
-
-    # Generates an execution plan for Terraform
-    - name: Terraform Plan
-      run: terraform plan -input=false
-
-      # On push to "main", build or change infrastructure according to Terraform configuration files
-      # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/"main"' && github.event_name == 'push'
-      run: terraform apply -auto-approve -input=false
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+        with: 
+          path: zee5-ve-stage-env
+      - uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.2.5
+          
+      - name: Install kubectl
+        uses: qgxpagamentos/kubectl-set@v1
+        with:
+          base64-kube-config: ${{ secrets.KUBE_CONFIG_DATA }}
+          kubectl-version: v1.21.5    
+          
+      # Runs a set of commands using the runners shell
+      - name: infra-deploy
+        run: |
+          echo ${{ github.event.inputs.logLevel }}
+          sudo apt-get -y update; sudo apt-get -y install git curl jq python3-pip zip; sudo apt-get -y install wget unzip
+          sudo pip3 install -U awscliv2
+          sudo curl -fsSL https://get.docker.com -o get-docker.sh
+          aws --version
+          sudo apt-get update -y
+          sudo apt-get install -y curl apt-transport-https
+          curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+          echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+          sudo apt-get update
+          #sudo apt-get install -y vim git curl wget kubectl
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+          which kubectl
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+          ls -la
+          echo $AWS_ACCESS_KEY $AWS_SECRET_ACCESS_KEY  Pass.........
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          cd zee5-ve-stage-env/${{github.event.inputs.logLevel}}-eks
+          pwd
+          ls -la
+          ls -lart
+          terraform init --backend-config="access_key=$AWS_ACCESS_KEY" --backend-config="secret_key=$AWS_SECRET_ACCESS_KEY"
+          terraform validate -no-color 
+          terraform plan -no-color -var access_key=$AWS_ACCESS_KEY -var secret_key=$AWS_SECRET_ACCESS_KEY
+          ls -la 
+          terraform apply -auto-approve -no-color -var access_key=$AWS_ACCESS_KEY -var secret_key=$AWS_SECRET_ACCESS_KEY
